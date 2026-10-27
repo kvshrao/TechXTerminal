@@ -6,7 +6,7 @@ import sys
 # ssh_config. This program never evaluates those, and loading invoke takes about a tenth of a second at start.
 sys.modules.setdefault("invoke", None)
 
-__version__ = "0.3.8"
+__version__ = "0.3.10"
 __author__ = "Venkata S Kuntamukkala"
 AUTHOR = __author__
 CAPTION = "Modern Shell Terminal"  # under the name in the top bar
