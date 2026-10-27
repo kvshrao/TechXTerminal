@@ -1,0 +1,14 @@
+Tech X Terminal
+Copyright (c) 2026 Venkata S Kuntamukkala
+
+Tech X Terminal is free software: you can redistribute it and modify it under the terms of the
+GNU General Public License, version 3 (29 June 2007), as published by the Free Software
+Foundation. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+The full text of the licence is in the LICENSE file.
+
+Third-party components
+----------------------
+The bundled Ubuntu fonts are under the Ubuntu Font Licence (techxterminal/fonts/UFL.txt).
+The libraries the application runs on keep their own licences; PyQt6 in particular is
+offered under the GPL v3 or a commercial licence.

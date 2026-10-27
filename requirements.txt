@@ -1,0 +1,10 @@
+PyQt6>=6.6
+paramiko>=3.4
+pyte>=0.8.2
+keyring>=24
+pyserial>=3.5
+pywinpty>=2.0.10
+
+# Build and lint tools (not needed to run the application)
+pyinstaller>=6.10
+pyflakes>=3.2
