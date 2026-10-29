@@ -70,9 +70,22 @@ Highlights
 - **Broadcast to chosen tabs**: send typed input only to the tabs you mark.
 - **Automatic responses**: answer prompts such as `--More--` or `[yes/no]` per session.
 - **Notify when output contains**: be alerted when some text appears in a tab.
+- **Notify when output stops**: for a long command, be told once when output has arrived and then
+  stopped for five seconds.
+- **Workspaces**: Save Open Tabs as a Workspace (the + menu, the command palette) keeps the sessions that
+  are open as a named set that opens together again, from either of those. A workspace also keeps its
+  tabs' pins, panes, sizes and front tabs, and workspaces are part of backups.
+- **Sort the sessions**: the sidebar lists them in folders by name, or in one list with the most recently
+  used first; the command palette changes it too, and the choice is remembered.
+- **Slow paste**: Settings, Terminal, can pause after each pasted line, for devices that lose characters
+  when text arrives too fast.
 - **Connection Info** and a **Tunnels** window: see, stop and start tunnels without reconnecting.
 - **SSH agent forwarding**, **Send Break** and **Send Text File**.
-- **Reopen closed tabs**, and a warning when a hidden tab loses its connection.
+- **Reopen closed tabs**, and a warning when a hidden tab loses its connection. Disconnect Tab, and
+  Reconnect Disconnected Tabs beside Close Disconnected Tabs, in the command palette.
+- **Terminal menu**: Clear Scrollback and Reset Terminal in the terminal's right-click menu.
+- **Keys**: Alt+1 to Alt+9 go to a tab, and Ctrl+Plus, Ctrl+Minus, Ctrl+0 and Ctrl+mouse wheel change the
+  terminal's font size; the keyboard shortcuts window lists them.
 
 File transfer
 
