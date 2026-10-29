@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -42,6 +43,7 @@ from PyQt6.QtWidgets import (
 )
 
 from . import APP_NAME, AUTHOR, LICENSE_NAME, LICENSE_URL, __version__, backup, connections, keys, licences, responses, threads
+from .hostkeys import ApprovedKey
 from .local import available_shells, find_program, start_folder
 from .paths import portable_folder
 from .screens import fit_to_screen
@@ -1711,7 +1713,10 @@ class SnippetsDialog(QDialog):
         self.command.setPlaceholderText("Command to send. Several lines are sent one after another.")
         self.command.textChanged.connect(self._store)
         # Shown all the time, not only while the box is empty, so it is there when editing.
-        placeholders = QLabel("{host}, {user}, {port} and {name} are filled in with the values of each tab it goes to.")
+        placeholders = QLabel(
+            "{host}, {user}, {port} and {name} are filled in with the values of each tab it goes to. "
+            "{?label} or {?label=default} asks for a value each time the command is sent."
+        )
         placeholders.setObjectName("Muted")
         placeholders.setWordWrap(True)
         right = QVBoxLayout()
@@ -1807,6 +1812,139 @@ class SnippetsDialog(QDialog):
         return [snippet for snippet in self._snippets if snippet.command.strip()]
 
 
+class HostKeysDialog(QDialog):
+    """The host keys that were approved. A server whose key was forgotten is asked about again at its next login,
+    which is what to do after its key changed on purpose."""
+
+    def __init__(self, keys: list[ApprovedKey], forget, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Approved Host Keys")
+        self.setMinimumSize(480, 320)
+        fit_to_screen(self, 760, 420)
+        self._keys = keys
+        self._forget = forget  # callable(host) -> number removed
+
+        self.filter = QLineEdit()
+        self.filter.setPlaceholderText("Filter by name or fingerprint")
+        self.filter.setClearButtonEnabled(True)
+        self.filter.setAccessibleName("Filter host keys")
+        self.filter.textChanged.connect(self._fill)
+        self.list = QListWidget()
+        self.list.setObjectName("HostKeyList")
+        self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.list.itemSelectionChanged.connect(self._selection_changed)
+        self.count = QLabel()
+        self.count.setObjectName("Muted")
+
+        self.forget_button = QPushButton("Forget")
+        self.forget_button.setToolTip("Ask again about the selected hosts at their next login")
+        self.forget_button.clicked.connect(self.forget_selected)
+        self.copy_button = QPushButton("Copy Fingerprint")
+        self.copy_button.clicked.connect(self.copy_fingerprints)
+        close = QPushButton("Close")
+        close.setDefault(True)
+        close.clicked.connect(self.accept)
+        buttons = QHBoxLayout()
+        buttons.addWidget(self.forget_button)
+        buttons.addWidget(self.copy_button)
+        buttons.addStretch(1)
+        buttons.addWidget(close)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 16)
+        layout.setSpacing(12)
+        layout.addWidget(self.filter)
+        layout.addWidget(self.list, 1)
+        layout.addWidget(self.count)
+        layout.addLayout(buttons)
+        self._fill()
+
+    def _fill(self) -> None:
+        words = self.filter.text().lower().split()
+        self.list.clear()
+        shown = 0
+        for key in self._keys:
+            text = f"{key.host}    {key.key_type}    {key.fingerprint}"
+            if all(word in text.lower() for word in words):
+                item = QListWidgetItem(text)
+                item.setData(Qt.ItemDataRole.UserRole, key)
+                if key.hashed:
+                    item.setToolTip("The name is kept as a hash, so this key cannot be forgotten from here")
+                self.list.addItem(item)
+                shown += 1
+        self.count.setText(f"{shown} of {len(self._keys)} approved" if words else f"{len(self._keys)} approved")
+        self._selection_changed()
+
+    def _selected(self) -> list[ApprovedKey]:
+        return [item.data(Qt.ItemDataRole.UserRole) for item in self.list.selectedItems()]
+
+    def _selection_changed(self) -> None:
+        selected = self._selected()
+        self.forget_button.setEnabled(any(not key.hashed for key in selected))
+        self.copy_button.setEnabled(bool(selected))
+
+    def forget_selected(self) -> int:
+        """Forget the keys of the selected hosts, after asking; returns how many keys went."""
+        hosts = sorted({key.host for key in self._selected() if not key.hashed})
+        if not hosts:
+            return 0
+        listed = hosts[0] if len(hosts) == 1 else f"{len(hosts)} hosts"
+        answer = QMessageBox.question(
+            self, "Forget Host Keys", f"Forget the keys of {listed}? They will be asked about again at the next login."
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return 0
+        removed = sum(self._forget(host) for host in hosts)
+        self._keys = [key for key in self._keys if key.hashed or key.host not in hosts]
+        self._fill()
+        return removed
+
+    def copy_fingerprints(self) -> None:
+        QGuiApplication.clipboard().setText("\n".join(key.fingerprint for key in self._selected()))
+
+
+class CommandValuesDialog(QDialog):
+    """Asks for the values a saved command wants, one field per {?label}. `values()` gives the answers."""
+
+    def __init__(self, title: str, prompts: list[tuple[str, str]], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumWidth(360)
+        fit_to_screen(self, 460, 120 + 36 * len(prompts))
+        self.fields: dict[str, QLineEdit] = {}
+        form = QFormLayout()
+        form.setSpacing(10)
+        for label, default in prompts:
+            field = QLineEdit(default)
+            field.setAccessibleName(label)
+            field.returnPressed.connect(self.accept)
+            self.fields[label] = field
+            form.addRow(label, field)
+
+        cancel = QPushButton("Cancel")
+        cancel.clicked.connect(self.reject)
+        send = QPushButton("Send")
+        send.setObjectName("Primary")
+        send.setDefault(True)
+        send.clicked.connect(self.accept)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        buttons.addWidget(cancel)
+        buttons.addWidget(send)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 16)
+        layout.setSpacing(14)
+        layout.addLayout(form)
+        layout.addLayout(buttons)
+        first = next(iter(self.fields.values()), None)
+        if first is not None:
+            first.setFocus()
+            first.selectAll()
+
+    def values(self) -> dict[str, str]:
+        return {label: field.text() for label, field in self.fields.items()}
+
+
 class TasksDialog(QDialog):
     """Edit the scheduled tasks. `tasks()` gives the result after it is accepted.
 
@@ -1896,6 +2034,11 @@ class TasksDialog(QDialog):
         self.timeout.setToolTip("A command still running after this long is stopped, and the task carries on")
         self.enabled = QCheckBox("Enabled")
         self.enabled.setToolTip("Untick to pause the schedule; Run Now still works")
+        self.then_run = QComboBox()
+        self.then_run.setToolTip(
+            "Another task to start when every command of this one succeeded, so that a backup can be followed\n"
+            "by its check. It is started in the same way (by this program, or by Windows) and not if it is running."
+        )
         self.notify_on_failure = QCheckBox("Notify me when a run fails")
         self.notify_on_failure.setToolTip(
             "A desktop notification, when the window is not in front or the task is run by Windows.\n"
@@ -1918,6 +2061,7 @@ class TasksDialog(QDialog):
         self.schedule_row.layout().addStretch(1)
         form.addRow("Schedule", self.schedule_row)
         form.addRow("Run by", self.runner)
+        form.addRow("Then run", self.then_run)
         limit_row = _row(self.timeout, self.stop_on_error, stretch_first=False)
         limit_row.layout().addStretch(1)
         form.addRow("Time limit", limit_row)
@@ -1977,6 +2121,7 @@ class TasksDialog(QDialog):
             self.target.currentIndexChanged,
             self.as_script.toggled,
             self.notify_on_failure.toggled,
+            self.then_run.currentIndexChanged,
         ):
             changed.connect(self._store)
         if scheduler is not None:
@@ -2013,7 +2158,7 @@ class TasksDialog(QDialog):
         for widget in (
             self.name, self.target, self.commands, self.output_file, self.append, self.schedule, self.every,
             self.daily_at, self.runner, self.stop_on_error, self.timeout, self.enabled, self.remove_button,
-            self.open_button, self.as_script, self.notify_on_failure,
+            self.open_button, self.as_script, self.notify_on_failure, self.then_run,
         ):  # fmt: skip
             widget.setEnabled(has)
         self.name.setText(task.name)
@@ -2034,6 +2179,12 @@ class TasksDialog(QDialog):
         self.enabled.setChecked(task.enabled)
         self.as_script.setChecked(task.as_script)
         self.notify_on_failure.setChecked(task.notify_on_failure)
+        self.then_run.clear()
+        self.then_run.addItem("Nothing", "")
+        for other in self._tasks:
+            if other is not task:
+                self.then_run.addItem(other.title, other.id)
+        self.then_run.setCurrentIndex(max(0, self.then_run.findData(task.then_run)))
         self._row = row if has else -1
         self._update_rows()
 
@@ -2054,6 +2205,7 @@ class TasksDialog(QDialog):
         task.stop_on_error = self.stop_on_error.isChecked()
         task.timeout = self.timeout.value()
         task.enabled = self.enabled.isChecked()
+        task.then_run = self.then_run.currentData() or ""
         task.as_script = self.as_script.isChecked()
         task.notify_on_failure = self.notify_on_failure.isChecked()
         self.list.item(self._row).setText(task.title)

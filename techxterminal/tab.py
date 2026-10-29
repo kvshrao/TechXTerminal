@@ -214,6 +214,7 @@ class TerminalTab(QWidget):
     transferSettingsRequested = pyqtSignal()  # the file browser's settings button was pressed
     activity = pyqtSignal()  # output arrived while this tab was in the background
     saveRequested = pyqtSignal()  # "Save Output..." was chosen in the terminal's menu
+    saveCommandRequested = pyqtSignal(str)  # "Save Selection as Saved Command..." was chosen, with the text
     bell = pyqtSignal()  # the remote side rang the bell
     silenceDetected = pyqtSignal()  # output stopped while the tab was being watched for that
     textSeen = pyqtSignal(str)  # output contained the text the tab was being watched for
@@ -292,6 +293,7 @@ class TerminalTab(QWidget):
         self.terminal.titleChanged.connect(self.titleChanged)
         self.terminal.findRequested.connect(self.show_find)
         self.terminal.saveRequested.connect(self.saveRequested)
+        self.terminal.saveCommandRequested.connect(self.saveCommandRequested)
         self.terminal.bell.connect(self.bell)
         self.setFocusProxy(self.terminal)
         self.find_bar = FindBar(self.terminal)

@@ -77,7 +77,7 @@ def run_task_by_name(wanted: str) -> int:
     import time
 
     from .sessions import SessionStore
-    from .tasks import TaskStore, run_task
+    from .tasks import TaskStore, chained_after, run_task
 
     errors.install()  # a failure is written to the error log: there may be no one watching
     tasks = TaskStore()
@@ -85,13 +85,20 @@ def run_task_by_name(wanted: str) -> int:
     if task is None:
         say(f"No scheduled task named {wanted!r}. --tasks lists them." if wanted else "--run-task needs the name of a task")
         return 2
-    started = time.time()
-    result = run_task(task, SessionStore())
-    tasks.record(task.id, started, result)
-    say(f"{task.title}: {result.summary}" + (f"\nOutput: {result.path}" if result.path else ""))
-    if not result.ok and task.notify_on_failure:
-        notify_failure(task.title, result)
-    return 0 if result.ok else 1
+    sessions = SessionStore()
+    ran: tuple[str, ...] = ()
+    while task is not None:
+        started = time.time()
+        result = run_task(task, sessions)
+        tasks.record(task.id, started, result)
+        say(f"{task.title}: {result.summary}" + (f"\nOutput: {result.path}" if result.path else ""))
+        if not result.ok:
+            if task.notify_on_failure:
+                notify_failure(task.title, result)
+            return 1
+        ran = (*ran, task.id)
+        task = chained_after(tasks, task, ran)  # the task named to follow, unless it already ran in this series
+    return 0
 
 
 def notify_failure(title: str, result) -> None:

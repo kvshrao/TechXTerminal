@@ -245,6 +245,7 @@ class TerminalWidget(QAbstractScrollArea):
     fontSizeChanged = pyqtSignal(int)
     findRequested = pyqtSignal()
     saveRequested = pyqtSignal()
+    saveCommandRequested = pyqtSignal(str)  # "Save as Saved Command..." was chosen, with the selected text
     bell = pyqtSignal()  # the remote side rang the bell
 
     def __init__(self, prefs: Preferences | None = None, parent=None):
@@ -1249,6 +1250,8 @@ class TerminalWidget(QAbstractScrollArea):
         menu.addAction("Select All", self.select_all)
         menu.addAction("Find...\tCtrl+Shift+F", self.findRequested.emit)
         menu.addSeparator()
+        keep = menu.addAction("Save Selection as Saved Command...", lambda: self.saveCommandRequested.emit(self.selected_text()))
+        keep.setEnabled(self.has_selection())
         menu.addAction("Save Output...", self.saveRequested.emit)
         menu.addAction("Clear Scrollback", self.clear_scrollback)
         menu.addAction("Reset Terminal", self.reset)

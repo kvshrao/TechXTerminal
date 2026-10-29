@@ -68,6 +68,7 @@ class Task:
     stop_on_error: bool = False  # skip the remaining commands once one fails
     as_script: bool = False  # all lines in one shell, so a cd or a variable carries over; one exit status for all
     notify_on_failure: bool = True  # a desktop notification when a run fails while no one is looking
+    then_run: str = ""  # the id of a task to run once every command of this one succeeded, empty for none
     timeout: int = DEFAULT_TIMEOUT
     created: float = field(default_factory=time.time)
     last_run: float = 0.0  # when the last run started
@@ -450,6 +451,13 @@ def run_task(task: Task, sessions: SessionStore, should_stop=None) -> TaskResult
 # ---- keeping tasks -----------------------------------------------------------------
 
 
+def chained_after(tasks: "TaskStore", task: Task, chain: tuple[str, ...] = ()) -> Task | None:
+    """The task to run after this one succeeded, or None. `chain` holds the ids already run in this series,
+    so that tasks that name each other run once each instead of for ever."""
+    following = tasks.get(task.then_run) if task.then_run else None
+    return following if following is not None and following.id not in (*chain, task.id) else None
+
+
 class TaskStore:
     def __init__(self, path: Path = TASKS_FILE):
         self.path = path
@@ -607,6 +615,7 @@ class TaskScheduler(QObject):
         self.tasks = tasks
         self.sessions = sessions
         self._runs: dict[str, TaskRun] = {}
+        self._chains: dict[str, tuple[str, ...]] = {}  # per running task: the ids that ran before it in its series
         self._timer = QTimer(self)
         self._timer.setInterval(self.CHECK_MS)
         self._timer.timeout.connect(self.check)
@@ -622,10 +631,11 @@ class TaskScheduler(QObject):
     def is_running(self, task_id: str) -> bool:
         return task_id in self._runs
 
-    def run(self, task: Task) -> bool:
+    def run(self, task: Task, chain: tuple[str, ...] = ()) -> bool:
         """Run a task now, whatever its schedule; False if it is running already."""
         if task.id in self._runs:
             return False
+        self._chains[task.id] = chain
         started = time.time()
         task.last_run = started  # at once, so that the next check does not start it again
         run = TaskRun(task, self.sessions)
@@ -641,7 +651,11 @@ class TaskScheduler(QObject):
             threads.park(run)
         task.last_result, task.last_ok = result.summary, result.ok
         self.tasks.record(task.id, started, result)
+        chain = self._chains.pop(task.id, ())
         self.finished.emit(task, result)
+        following = chained_after(self.tasks, task, chain) if result.ok else None
+        if following is not None:
+            self.run(following, (*chain, task.id))
 
     def shutdown(self) -> None:
         self._timer.stop()

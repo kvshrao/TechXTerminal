@@ -8,8 +8,8 @@ A modern tabbed SSH terminal for Windows, with a file browser, tunnels and saved
 - **Sessions:** saved with folders, favourites, colours and notes; quick connect with suggestions; a command palette (Ctrl+Shift+P); import from an OpenSSH config, PuTTY's saved sessions or a file; export and full backup.
 - **Files:** a two-sided file browser (this computer and the server) with a transfer queue. Several transfers run at the same time, each on its own channel, with a shared speed limit, pause, cancel, and partial files that can be continued. Remote files can be edited in a local editor and are saved back.
 - **Local shells:** PowerShell, the Command Prompt, WSL or Git Bash in a tab, like any other session.
-- **Scheduled tasks:** a series of commands run on a saved SSH session or on this computer, by hand, every so many minutes or every day at a time, with the output kept in a text file. They run while the application is open, or from Windows Task Scheduler, also while it is closed.
-- **Terminal:** scrollback with search, copy on select, slow paste for devices that lose characters, automatic responses (`--More--`, `[yes/no]`), session logs, saved commands that can be sent to one tab or all of them, workspaces (saved sets of tabs), and dark, light or system themes.
+- **Scheduled tasks:** a series of commands run on a saved SSH session or on this computer, by hand, every so many minutes or every day at a time, with the output kept in a text file; a task can start another when it succeeds. They run while the application is open, or from Windows Task Scheduler, also while it is closed.
+- **Terminal:** scrollback with search, copy on select, slow paste for devices that lose characters, automatic responses (`--More--`, `[yes/no]`), session logs, saved commands that can be sent to one tab or all of them (and can ask for values with `{?label}`), workspaces (saved sets of tabs), and dark, light or system themes.
 
 See [CHANGELOG.md](CHANGELOG.md) for what each version added.
 
@@ -46,7 +46,7 @@ Passwords are not in the sessions file or in backups. The one exception is a pas
 
 ## Safety
 
-- An unknown host key is shown for you to approve, and a key that has changed is refused.
+- An unknown host key is shown for you to approve, and a key that has changed is refused. Approved keys can be listed and forgotten from Approved Host Keys.
 - Agent forwarding is off unless a session asks for it.
 - What a server sends is not trusted: file names are made into plain names before anything is written (a name such as `..\..\x` cannot put a file outside the folder you chose), a script or program fetched for editing is shown in Notepad and never run, and names and messages from a server are shown as written, not drawn as HTML.
 

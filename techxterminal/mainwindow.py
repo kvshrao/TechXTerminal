@@ -45,7 +45,9 @@ from PyQt6.QtWidgets import (
 from . import APP_NAME, CAPTION, __version__, backup, connections, errors, importers, keys, threads
 from .dialogs import (
     BackupPassphraseDialog,
+    CommandValuesDialog,
     ConnectionInfoDialog,
+    HostKeysDialog,
     KeyDialog,
     SessionDialog,
     SettingsDialog,
@@ -56,6 +58,7 @@ from .dialogs import (
     ask_text,
 )
 from . import monitor
+from .hostkeys import approved_keys, forget_host
 from .local import available_shells, local_session
 from .monitor import StatsProbe
 from .monitorview import Sample, ServerMonitorWindow, new_history
@@ -64,7 +67,7 @@ from .preferences import Preferences, open_settings
 from .screens import fit_to_screen, keep_on_screen
 from .sftp import human_size
 from .sessions import KNOWN_HOSTS_FILE, AUTH_AGENT, DEFAULT_PORTS, PROTO_LOCAL, PROTO_SERIAL, PROTO_SSH, PROTOCOLS, Session, SessionStore
-from .snippets import Snippet, SnippetStore, fill_placeholders
+from .snippets import Snippet, SnippetStore, fill_placeholders, fill_prompts, prompts_in
 from .tasks import (
     SCHEDULE_MANUAL,
     Task,
@@ -1568,6 +1571,20 @@ class MainWindow(QMainWindow):
         button = self.snippet_button
         menu.exec(button.mapToGlobal(button.rect().topLeft()))
 
+    def save_as_snippet(self, text: str, name: str | None = None) -> Snippet | None:
+        """Keep text from the terminal as a saved command; asks for a name unless given one. Returns it, or None."""
+        text = "\n".join(line.rstrip() for line in text.strip().splitlines())
+        if not text:
+            return None
+        if name is None:
+            name, ok = ask_text(self, "Save as Saved Command", "Name shown in the menu (may be empty)")
+            if not ok:
+                return None
+        snippet = Snippet(name.strip(), text)
+        self.snippets.replace_all([*self.snippets.snippets, snippet])
+        self.notify(f"Saved as “{snippet.title}” in the saved commands", "success")
+        return snippet
+
     def edit_snippets(self) -> None:
         dialog = SnippetsDialog(self.snippets.snippets, self)
         if dialog.exec():
@@ -1728,6 +1745,7 @@ class MainWindow(QMainWindow):
             ("Send Break", "", self.send_break),
             ("Send Text File", "", self.send_text_file),
             ("Tunnels", "", self.show_tunnels),
+            ("Approved Host Keys", "", self.show_host_keys),
             ("Pause / Resume Automatic Responses", "", self.toggle_responses),
         ]
 
@@ -1963,6 +1981,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Back Up Everything to a File...", self._ask_backup)
         menu.addAction("Restore from a Backup...", self._ask_restore)
         menu.addSeparator()
+        menu.addAction("Approved Host Keys...", self.show_host_keys)
         menu.addAction("Clear History...", self.clear_history)
         menu.addAction("Clear Logs...", self.clear_logs)
         button = anchor if isinstance(anchor, QWidget) else self.import_button  # a click passes a bool
@@ -2191,6 +2210,7 @@ class MainWindow(QMainWindow):
         tab.transferSettingsRequested.connect(lambda: self.open_settings("transfers"))
         tab.activity.connect(lambda: self._refresh_tab_label(tab))
         tab.saveRequested.connect(lambda: self.save_output(tab))
+        tab.saveCommandRequested.connect(self.save_as_snippet)
         tab.bell.connect(lambda: self._tab_rang(tab))
         tab.silenceDetected.connect(lambda: self._tab_went_quiet(tab))
         tab.textSeen.connect(lambda seen: self._tab_saw_text(tab, seen))
@@ -3022,6 +3042,13 @@ class MainWindow(QMainWindow):
         dialog.show()
         return dialog
 
+    def show_host_keys(self, path=KNOWN_HOSTS_FILE) -> HostKeysDialog:
+        """The host keys that were approved, with a way to forget them so they are asked about again."""
+        dialog = HostKeysDialog(approved_keys(path), lambda host: forget_host(host, path), self)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        dialog.show()
+        return dialog
+
     # ---- workspaces -----------------------------------------------------------------------
 
     def _saved_open_ids(self) -> list[str]:
@@ -3550,9 +3577,24 @@ class MainWindow(QMainWindow):
             self.all_tabs.setText("All" if narrow else "All tabs")
             self.all_tabs.setToolTip("Broadcast the command to every connected tab")
 
+    def ask_snippet_values(self, snippet: Snippet, prompts: list[tuple[str, str]]) -> dict[str, str] | None:
+        """The answers to a saved command's {?label} prompts; None if the question was cancelled."""
+        dialog = CommandValuesDialog(snippet.title, prompts, self)
+        return dialog.values() if dialog.exec() else None
+
     def send_snippet(self, snippet: Snippet) -> int:
-        """Send a saved command, with its placeholders filled in for each tab it goes to."""
-        sent = self.send_to_targets(snippet.command, placeholders=True)
+        """Send a saved command, with the values it asks for and its placeholders filled in for each tab it goes to."""
+        command = snippet.command
+        prompts = prompts_in(command)
+        if prompts:
+            if not self.current_tab():
+                self._nothing_sent()
+                return 0
+            answers = self.ask_snippet_values(snippet, prompts)
+            if answers is None:
+                return 0
+            command = fill_prompts(command, answers)
+        sent = self.send_to_targets(command, placeholders=True)
         if not sent:
             self._nothing_sent()
         return sent

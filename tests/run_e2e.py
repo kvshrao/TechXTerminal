@@ -2854,6 +2854,68 @@ check("saved commands: the editor adds, renames and deletes", [(sn.name, sn.comm
 editor.grab().save(str(SCRATCH / "shot_snippets.png"))
 editor.close()
 
+from techxterminal.snippets import fill_prompts, prompts_in
+
+check("saved commands: {?label} and {?label=default} are the values asked for, each once, in order", prompts_in("scp {?file} {user}@{?host=db-1}:{?dir=/tmp}\nls {?file}") == [("file", ""), ("host", "db-1"), ("dir", "/tmp")] and prompts_in("awk '{print $1}' {host}") == [], repr(prompts_in("scp {?file} {?host=db-1}")))
+check("saved commands: answers fill the prompts, an unanswered one keeps its default, and a line break cannot make a second command", fill_prompts("rm {?file}; ls {?dir=/tmp}", {"file": "a b\nrm -rf /"}) == "rm a b rm -rf /; ls /tmp" and fill_prompts("x {?a=1}", {"a": ""}) == "x ")
+asked_for = []
+win.ask_snippet_values = lambda snippet, prompts: asked_for.append((snippet.title, prompts)) or {"word": "typed-value"}
+win.all_tabs.setChecked(False)
+win.tabs.setCurrentIndex(win.tabs.indexOf(tlog))
+sent_to = win.send_snippet(Snippet("Say", "echo {?word=none} on {host}"))
+pump(0.9)
+check("saved commands: a command with prompts asks first, then sends with the answers and the tab's placeholders", sent_to == 1 and asked_for == [("Say", [("word", "none")])] and "ran: echo typed-value on 127.0.0.1" in text(tlog), repr(asked_for))
+win.ask_snippet_values = lambda snippet, prompts: None
+check("saved commands: cancelling the question sends nothing", win.send_snippet(Snippet("Say", "echo {?word} cancelled-marker")) == 0)
+pump(0.5)
+check("saved commands: (and nothing reached the tab)", "ran: echo  cancelled-marker" not in text(tlog) and "cancelled-marker" not in text(tlog).replace("echo {?word} cancelled-marker", ""))
+del win.ask_snippet_values
+from techxterminal.dialogs import CommandValuesDialog
+
+values_dialog = CommandValuesDialog("Say", [("host", "db-1"), ("dir", "")], win)
+values_dialog.show()
+pump(0.2)
+values_dialog.fields["dir"].setText("/srv")
+check("saved commands: the question has a field for each label, with the default filled in", list(values_dialog.fields) == ["host", "dir"] and values_dialog.values() == {"host": "db-1", "dir": "/srv"})
+values_dialog.close()
+
+before_count = len(win.snippets.snippets)
+kept = win.save_as_snippet("  sudo journalctl -u nginx   \n  -n 50  \n", "Nginx log")
+check("saved commands: text from the terminal is kept as a saved command, trimmed", kept is not None and (kept.name, kept.command) == ("Nginx log", "sudo journalctl -u nginx\n  -n 50") and len(win.snippets.snippets) == before_count + 1 and SnippetStore().snippets[-1].command == kept.command, repr(kept))
+check("saved commands: nothing selected keeps nothing", win.save_as_snippet("  \n ", "x") is None and len(win.snippets.snippets) == before_count + 1)
+win.snippets.replace_all(win.snippets.snippets[:before_count])
+
+# ---- approved host keys ----------------------------------------------------------------------------------
+from techxterminal import hostkeys as _hostkeys
+
+keys_file = WORK / "approved_known_hosts"
+_book = paramiko.HostKeys()
+_book.add("web-01", "ssh-rsa", paramiko.RSAKey.generate(2048))
+_book.add("[10.0.0.9]:2222", "ssh-rsa", paramiko.RSAKey.generate(2048))
+_book.save(str(keys_file))
+keys_file.write_text(keys_file.read_text(encoding="utf-8") + "# kept as it is\nnot a key line\n", encoding="utf-8")
+approved = _hostkeys.approved_keys(keys_file)
+check("host keys: every approved key is listed with its fingerprint, comments and damaged lines left out", [(k.host, k.key_type) for k in approved] == [("[10.0.0.9]:2222", "ssh-rsa"), ("web-01", "ssh-rsa")] and all(k.fingerprint.startswith("SHA256:") for k in approved) and _hostkeys.approved_keys(WORK / "no-such-file") == [], repr(approved))
+check("host keys: forgetting an unknown name changes nothing", _hostkeys.forget_host("nobody", keys_file) == 0)
+host_keys_window = win.show_host_keys(keys_file)
+pump(0.2)
+shown_all = host_keys_window.list.count()
+host_keys_window.filter.setText("web")
+shown_filtered = host_keys_window.list.count()
+host_keys_window.filter.setText("")
+check("host keys: the window lists them and filters by name", shown_all == 2 and shown_filtered == 1 and host_keys_window.list.count() == 2)
+host_keys_window.list.selectAll()
+real_question = QMessageBox.question
+QMessageBox.question = staticmethod(lambda *args, **kwargs: QMessageBox.StandardButton.No)
+declined = host_keys_window.forget_selected()
+QMessageBox.question = staticmethod(lambda *args, **kwargs: QMessageBox.StandardButton.Yes)
+host_keys_window.filter.setText("web")
+host_keys_window.list.selectAll()
+removed = host_keys_window.forget_selected()
+QMessageBox.question = real_question
+check("host keys: Forget asks first, then removes only the selected host, and the file keeps its other lines", declined == 0 and removed == 1 and [k.host for k in _hostkeys.approved_keys(keys_file)] == ["[10.0.0.9]:2222"] and "# kept as it is" in keys_file.read_text(encoding="utf-8") and "not a key line" in keys_file.read_text(encoding="utf-8"))
+host_keys_window.close()
+
 # ---- folders -----------------------------------------------------------------------------------------
 production = [session.name for session in win.sessions_in("Production")]
 folder_tabs = win.connect_folder("Production")
@@ -3791,6 +3853,38 @@ win.tasks.load()
 check("command line: the run is recorded for the window to show", win.tasks.find("Disk report").last_result == "1 command succeeded")
 cli_missing = _subprocess.run([sys.executable, str(ROOT / "main.py"), "--run-task", "nothing like this"], capture_output=True, text=True, timeout=60, env=dict(os.environ))
 check("command line: --run-task with an unknown task exits with status 2", cli_missing.returncode == 2 and "No scheduled task named" in cli_missing.stdout, cli_missing.stdout)
+first_link = _tasks.Task(name="link one", target=_tasks.TARGET_CMD, commands="echo chain-one", append=False)
+second_link = _tasks.Task(name="link two", target=_tasks.TARGET_CMD, commands="echo chain-two", append=False)
+first_link.then_run, second_link.then_run = second_link.id, first_link.id  # each names the other: they must still run once each
+win.save_tasks([first_link, second_link])
+win.scheduler.run(win.tasks.get(first_link.id))
+check("tasks: a task that succeeded starts the one it names, and tasks that name each other run once each", pump(40, lambda: win.tasks.get(second_link.id).last_run > 0 and not win.scheduler.is_running(first_link.id) and not win.scheduler.is_running(second_link.id)) and win.tasks.get(second_link.id).last_ok, repr(win.tasks.get(second_link.id).last_result))
+pump(1.0)
+check("tasks: (the chain ended, and each output file has its own run)", not win.scheduler.is_running(first_link.id) and not win.scheduler.is_running(second_link.id) and "chain-one" in _tasks.output_path(first_link).read_text(encoding="utf-8") and "chain-two" in _tasks.output_path(second_link).read_text(encoding="utf-8"))
+second_link.then_run = ""  # the second no longer names the first; the first still names the second
+first_link.commands = "exit 1"
+win.save_tasks([first_link, second_link])
+win.tasks.get(second_link.id).last_run = 0
+win.tasks.save()
+win.scheduler.run(win.tasks.get(first_link.id))
+pump(15, lambda: not win.scheduler.is_running(first_link.id))
+pump(1.0)
+check("tasks: a task that failed does not start the next", win.tasks.get(second_link.id).last_run == 0 and not win.tasks.get(first_link.id).last_ok)
+first_link.commands = "echo chain-one"
+win.save_tasks([first_link, second_link])
+chain_run = _subprocess.run([sys.executable, str(ROOT / "main.py"), "--run-task", "link one"], capture_output=True, text=True, timeout=120, env=dict(os.environ))
+check("command line: --run-task goes on to the task named to follow", chain_run.returncode == 0 and "link one: 1 command succeeded" in chain_run.stdout and "link two: 1 command succeeded" in chain_run.stdout, chain_run.stdout + chain_run.stderr[-300:])
+chain_dialog = TasksDialog(win.tasks.tasks, win.store.sessions, win.scheduler, win)
+chain_dialog.list.setCurrentRow(0)
+pick = chain_dialog.then_run
+offered = [pick.itemText(i) for i in range(pick.count())]
+pick.setCurrentIndex(0)
+pick.setCurrentIndex(1)
+chain_dialog.list.setCurrentRow(1)
+chain_dialog.list.setCurrentRow(0)
+check("tasks window: Then Run offers the other tasks but not the task itself, and keeps the choice", offered == ["Nothing", "link two"] and pick.currentData() == second_link.id and chain_dialog.tasks()[0].then_run == second_link.id, repr(offered))
+chain_dialog.deleteLater()
+
 win.save_tasks([])
 for extra in (task_server, unknown_host, no_password):
     win.store.sessions.remove(extra)

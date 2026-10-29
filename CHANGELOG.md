@@ -15,6 +15,16 @@ Highlights
   that every run is added to drops its oldest runs past 10 MB, and tasks are part of backups. A task
   can run its lines as one script, so a `cd` holds for the lines after it, and a run that fails can
   bring a desktop notification, also when Windows ran it.
+- **Task chains**: a task can name another to run when every command of it succeeded ("Then run" in the
+  task's window), from the application, from Windows Task Scheduler and from `--run-task`. A failed task
+  starts nothing, and tasks that name each other run once each.
+- **Saved commands that ask**: `{?label}` or `{?label=default}` in a saved command opens a small form for
+  the values each time it is sent (a label used twice is asked once). A line break in an answer becomes a
+  space, so one answer can never become a second command.
+- **Save Selection as Saved Command**: in the terminal's right-click menu, keeps the selected text as a saved command.
+- **Approved Host Keys**: in the import menu and the command palette, lists the host keys that were approved,
+  with their fingerprints and a filter, and forgets chosen hosts so they are asked about again at the next
+  login (for a server whose key changed on purpose). Other lines of the file are left as they are.
 - **Command line**: `--tasks` lists the scheduled tasks and `--run-task NAME` runs one without
   opening the window.
 - **Encrypted backups**: Back Up Everything asks for a passphrase and encrypts the backup with AES-256-GCM
