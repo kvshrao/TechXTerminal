@@ -4,10 +4,34 @@
 
 Highlights
 
+- **Scheduled tasks** that run commands on a saved session or on this computer, on a timer or by hand,
+  also while the application is closed.
+- **Local shells** (PowerShell, Command Prompt, WSL, Git Bash) in a tab, like any other session.
+- **Server monitor**: round trip, load, memory and disk of the active SSH server in the status bar,
+  with a half-hour history and desktop alerts.
+- **Compare** folders in the file browser, and faster, parallel transfers.
+- **Pinned tabs**, **workspaces** and a grid of panes.
+- **Encrypted backups**, and a list of approved host keys that can be forgotten.
+
+Connections
+
 - **Local shells**: PowerShell, the Command Prompt, WSL or Git Bash in a tab, from the shell button,
   the + menu, quick connect (`local`, `local://cmd.exe`) or the command line. A saved session can be
   one too: choose "Local shell" and name the program, and the folder it starts in. Open shells come back
   with "Reopen tabs at start".
+- **Save what quick connect opened**: a Save button right after connecting, and Save as Session in the
+  tab's menu, keep the address as a session; the tab carries on as that session. No password is kept.
+- **One copy at a time**: starting the program again brings the open window to the front, and sessions
+  named on the command line open in it. `--list`, `--tasks` and `--run-task` still work while it is open.
+- **Connection Info** and a **Tunnels** window: see, stop and start tunnels without reconnecting.
+- **SSH agent forwarding**, **Send Break** and **Send Text File**.
+- **Approved Host Keys**: in the import menu and the command palette, lists the host keys that were approved,
+  with their fingerprints and a filter, and forgets chosen hosts so they are asked about again at the next
+  login (for a server whose key changed on purpose). Other lines of the file are left as they are.
+- **Disconnect Tab**, and Reconnect Disconnected Tabs beside Close Disconnected Tabs, in the command palette.
+
+Scheduled tasks and saved commands
+
 - **Scheduled tasks**: run a series of commands on a saved SSH session or on this computer, every so
   many minutes, every day at a time or by hand, and keep what they print in a text file. The
   application runs them while it is open, or Windows Task Scheduler does, also while it is closed.
@@ -18,18 +42,15 @@ Highlights
 - **Task chains**: a task can name another to run when every command of it succeeded ("Then run" in the
   task's window), from the application, from Windows Task Scheduler and from `--run-task`. A failed task
   starts nothing, and tasks that name each other run once each.
+- **Command line**: `--tasks` lists the scheduled tasks and `--run-task NAME` runs one without
+  opening the window.
 - **Saved commands that ask**: `{?label}` or `{?label=default}` in a saved command opens a small form for
   the values each time it is sent (a label used twice is asked once). A line break in an answer becomes a
   space, so one answer can never become a second command.
 - **Save Selection as Saved Command**: in the terminal's right-click menu, keeps the selected text as a saved command.
-- **Approved Host Keys**: in the import menu and the command palette, lists the host keys that were approved,
-  with their fingerprints and a filter, and forgets chosen hosts so they are asked about again at the next
-  login (for a server whose key changed on purpose). Other lines of the file are left as they are.
-- **Command line**: `--tasks` lists the scheduled tasks and `--run-task NAME` runs one without
-  opening the window.
-- **Encrypted backups**: Back Up Everything asks for a passphrase and encrypts the backup with AES-256-GCM
-  (the key made from the passphrase with scrypt), so it is safe on a USB stick or in cloud storage. Restore
-  asks for the passphrase, and a wrong one changes nothing. Plain zip backups still work both ways.
+
+Server monitoring
+
 - **Server monitor**: the status bar shows the round trip to the active SSH tab's server, and its load,
   memory and disk use, read every ten seconds on a channel of its own, amber when high and red when
   critical. Settings, Behaviour turns it off; a server that cannot give the figures still has its round trip.
@@ -40,52 +61,62 @@ Highlights
   notification (or a notice, while the window is in front) tells which; a click goes to its tab. Tabs not
   in front are checked once a minute. Each alert is told once, until the figure recovers; Settings turns
   them off.
-- **Delete a folder with files in it**: in the file browser, deleting a folder on the server removes what is
-  in it too (the question says so), instead of being refused because it was not empty. Links are removed,
-  never followed.
+
+Terminal
+
+- **Automatic responses**: answer prompts such as `--More--` or `[yes/no]` per session.
+- **Notify when output contains**: be alerted when some text appears in a tab.
+- **Notify when output stops**: for a long command, be told once when output has arrived and then
+  stopped for five seconds.
+- **Slow paste**: Settings, Terminal, can pause after each pasted line, for devices that lose characters
+  when text arrives too fast.
+- **Terminal menu**: Clear Scrollback and Reset Terminal in the terminal's right-click menu.
+- **Keys**: Alt+1 to Alt+9 go to a tab, and Ctrl+Plus, Ctrl+Minus, Ctrl+0 and Ctrl+mouse wheel change the
+  terminal's font size; the keyboard shortcuts window lists them.
+
+Tabs, panes and sessions
+
+- **Pin Tab** in the tab's menu and the command palette: a pinned tab moves to the left of its pane, shows a
+  diamond instead of a close cross, and is left alone by Close Other Tabs, Close Tabs to the Right and
+  Close Disconnected Tabs; closing it by hand asks first.
+  - Pins come back with "Reopen tabs at start" and with Reopen Closed Tab.
+  - Pinned tabs stay together at the left: a tab dragged in among them, or one of them dragged out, goes back
+    when the mouse is released. A pinned tab moved to another pane joins the pinned ones there, and the
+    command palette lists pinned tabs first, as Pinned.
+  - A session can be set to "Open its tab pinned" in its window, or from the sidebar with Open Its Tab Pinned
+    in a session's menu. The sidebar marks a session that opens pinned with a small diamond, and so does the
+    rail of session tiles.
+  - Close All Unpinned Tabs (in Other Tabs and the command palette) closes the rest in one go, and Pin All Tabs
+    and Unpin All Tabs (Other Tabs, command palette) change every tab at once.
+  - "Reopen tabs at start" puts each tab back in the pane it was in, as wide as it was, with the tab that was
+    in front in each pane, and remembers the pane in use too.
+  - In Settings, Behaviour, pinned tabs can show only their icon (the name is in the tooltip), and the number
+    of open tabs from which the tab list has its filter box can be chosen.
+  - Pin Tab has a shortcut (Ctrl+Shift+I), and so has the list of open tabs (Ctrl+Shift+J).
+- **All open tabs list**: a chevron beside the + button lists every open tab of every pane, with its state
+  icon, for when too many are open to find one in the tab bar. With more than eight open it has a box to
+  filter them by name or address; Enter goes to the first one left.
+- **Workspaces**: Save Open Tabs as a Workspace (the + menu, the command palette) keeps the sessions that
+  are open as a named set that opens together again, from either of those. A workspace also keeps its
+  tabs' pins, panes, sizes and front tabs, and workspaces are part of backups.
+- **Grid of panes**: three or four panes at once, in two columns.
+- **Broadcast to chosen tabs**: send typed input only to the tabs you mark.
+- **Reopen closed tabs**, and a warning when a hidden tab loses its connection.
+- **Sort the sessions**: the sidebar lists them in folders by name, or in one list with the most recently
+  used first; the command palette changes it too, and the choice is remembered.
+- **Session search tells why**: the sidebar search also looks in a session's jump host and tunnels, and a row
+  found only by its note, jump host or tunnels shows that line under its name.
+
+Backup and data
+
+- **Encrypted backups**: Back Up Everything asks for a passphrase and encrypts the backup with AES-256-GCM
+  (the key made from the passphrase with scrypt), so it is safe on a USB stick or in cloud storage. Restore
+  asks for the passphrase, and a wrong one changes nothing. Plain zip backups still work both ways.
 - **Clear History**: in the import menu and the command palette, forgets the commands sent from the send bar,
   the addresses typed into quick connect, the recent sessions on the start page and the closed tabs that can be
   reopened. Saved sessions are kept.
 - **Clear Logs**: in the import menu and the command palette, deletes the session log files in the log
   folder, except those an open tab is still writing to.
-- **Transfer log**: the file browser's log is kept between sessions, shows completed transfers in green, and
-  has a right-click menu to copy lines, copy all, save to a file or clear; a Clear button sits beside Log.
-- **Modern file browser look**: softer rounded cards, flat toolbar buttons and field backgrounds, roomier rows,
-  and no divider lines. The folder trees start hidden so the lists get the whole card; the folder button in each
-  side's header shows them (the choice is remembered).
-- **Compact file browser**: tighter cards, toolbar, rows and footer, and the transfer queue is out of the way
-  until something is queued, failed or done (the Queue button in the footer shows it any time).
-- **Properties and folder size**: Properties in either side's right-click menu shows a file's or folder's
-  details, and adds up a folder's total size (files and folders counted, links not followed) while it is open.
-- **Open Terminal Here**: in the remote menu, types `cd` to the selected folder (or the one showing) in the
-  session's terminal and brings it forward. The name is quoted, and one with control characters is refused.
-- **File browser keys**: Ctrl+F goes to the filter, Ctrl+L to the path, Escape empties the filter and then
-  returns to the list, and Ctrl+Shift+C (or Copy Path in the menu) copies the selected paths, or the folder.
-- **File browser sort order**: the column and direction each list was last sorted by are remembered.
-- **Save what quick connect opened**: a Save button right after connecting, and Save as Session in the
-  tab's menu, keep the address as a session; the tab carries on as that session. No password is kept.
-- **One copy at a time**: starting the program again brings the open window to the front, and sessions
-  named on the command line open in it. `--list`, `--tasks` and `--run-task` still work while it is open.
-- **Grid of panes**: three or four panes at once, in two columns.
-- **Broadcast to chosen tabs**: send typed input only to the tabs you mark.
-- **Automatic responses**: answer prompts such as `--More--` or `[yes/no]` per session.
-- **Notify when output contains**: be alerted when some text appears in a tab.
-- **Notify when output stops**: for a long command, be told once when output has arrived and then
-  stopped for five seconds.
-- **Workspaces**: Save Open Tabs as a Workspace (the + menu, the command palette) keeps the sessions that
-  are open as a named set that opens together again, from either of those. A workspace also keeps its
-  tabs' pins, panes, sizes and front tabs, and workspaces are part of backups.
-- **Sort the sessions**: the sidebar lists them in folders by name, or in one list with the most recently
-  used first; the command palette changes it too, and the choice is remembered.
-- **Slow paste**: Settings, Terminal, can pause after each pasted line, for devices that lose characters
-  when text arrives too fast.
-- **Connection Info** and a **Tunnels** window: see, stop and start tunnels without reconnecting.
-- **SSH agent forwarding**, **Send Break** and **Send Text File**.
-- **Reopen closed tabs**, and a warning when a hidden tab loses its connection. Disconnect Tab, and
-  Reconnect Disconnected Tabs beside Close Disconnected Tabs, in the command palette.
-- **Terminal menu**: Clear Scrollback and Reset Terminal in the terminal's right-click menu.
-- **Keys**: Alt+1 to Alt+9 go to a tab, and Ctrl+Plus, Ctrl+Minus, Ctrl+0 and Ctrl+mouse wheel change the
-  terminal's font size; the keyboard shortcuts window lists them.
 
 File transfer
 
@@ -105,6 +136,32 @@ File transfer
   continued.
 - Progress in the taskbar, and a flash when transfers finish in the background.
 - A File Transfer page in Settings.
+- **Delete a folder with files in it**: in the file browser, deleting a folder on the server removes what is
+  in it too (the question says so), instead of being refused because it was not empty. Links are removed,
+  never followed.
+- **Properties and folder size**: Properties in either side's right-click menu shows a file's or folder's
+  details, and adds up a folder's total size (files and folders counted, links not followed) while it is open.
+- **Open Terminal Here**: in the remote menu, types `cd` to the selected folder (or the one showing) in the
+  session's terminal and brings it forward. The name is quoted, and one with control characters is refused.
+- **Transfer log**: the file browser's log is kept between sessions, shows completed transfers in green, and
+  has a right-click menu to copy lines, copy all, save to a file or clear; a Clear button sits beside Log.
+- **File browser keys**: Ctrl+F goes to the filter, Ctrl+L to the path, Escape empties the filter and then
+  returns to the list, and Ctrl+Shift+C (or Copy Path in the menu) copies the selected paths, or the folder.
+- **File browser sort order**: the column and direction each list was last sorted by are remembered.
+- **Modern file browser look**: softer rounded cards, flat toolbar buttons and field backgrounds, roomier rows,
+  and no divider lines. The folder trees start hidden so the lists get the whole card; the folder button in each
+  side's header shows them (the choice is remembered).
+- **Compact file browser**: tighter cards, toolbar, rows and footer, and the transfer queue is out of the way
+  until something is queued, failed or done (the Queue button in the footer shows it any time).
+- A lighter, cleaner file browser: the two sides and the transfer queue are cards, each side headed
+  by what it is ("This computer" or the session's name), the path and filter fields carry icons in
+  place of labels, columns have short names (Name, Size, Type, Modified), the queue's tabs sit on
+  top, and Upload and Download are a quieter pair. It opens with the focus in the local files.
+- The file browser's folder trees are taller and less indented, and keep the current folder in
+  view while the folders around it are still being listed. Sizes are headed on the right, over the
+  numbers, and the sort arrow sits above its heading, as in Explorer.
+- The file browser: a selected folder no longer has a block of accent colour beside it, its folder
+  trees use the same arrows as the session list, and an empty transfer list says what would be in it.
 
 Window
 
@@ -127,29 +184,6 @@ Window
   connection dot on the corner, in place of the colour bar and ring.
 - A star at the end of each session row makes it a favourite with one click, and back; it shows filled
   on favourites and as an outline on the row pointed at.
-- **Pin Tab** in the tab's menu and the command palette: a pinned tab moves to the left of its pane, shows a
-  diamond instead of a close cross, and is left alone by Close Other Tabs, Close Tabs to the Right and
-  Close Disconnected Tabs; closing it by hand asks first.
-  Pins come back with "Reopen tabs at start" and with Reopen Closed Tab.
-  Pinned tabs stay together at the left: a tab dragged in among them, or one of them dragged out, goes back
-  when the mouse is released. A session can be set to "Open its tab pinned" in its window.
-  The same from the sidebar: Open Its Tab Pinned in a session's menu. A pinned tab moved to another pane
-  joins the pinned ones there, and the command palette lists pinned tabs first, as Pinned.
-  The sidebar marks a session that opens pinned with a small diamond, Close All Unpinned Tabs (in Other Tabs
-  and the command palette) closes the rest in one go, and "Reopen tabs at start" puts each tab back in the pane
-  it was in, and as wide as it was. The rail of session tiles marks them with a diamond too, and Pin All Tabs
-  and Unpin All Tabs (Other Tabs, command palette) change every tab at once.
-  "Reopen tabs at start" also brings back the tab that was in front in each pane. In Settings, Behaviour, pinned
-  tabs can show only their icon (the name is in the tooltip), and the number of open tabs from which the tab
-  list has its filter box can be chosen.
-  "Reopen tabs at start" remembers the pane in use too, and a workspace keeps its tabs' pins, panes, sizes and
-  front tabs as well as the sessions. Pin Tab has a shortcut (Ctrl+Shift+I), and so has the list of open
-  tabs (Ctrl+Shift+J).
-- **All open tabs list**: a chevron beside the + button lists every open tab of every pane, with its state
-  icon, for when too many are open to find one in the tab bar. With more than eight open it has a box to
-  filter them by name or address; Enter goes to the first one left.
-- **Session search tells why**: the sidebar search also looks in a session's jump host and tunnels, and a row
-  found only by its note, jump host or tunnels shows that line under its name.
 - Calmer tabs: the close cross shows on the current tab and the one pointed at, without the others
   changing width, and the current tab has a fine edge that joins it to the terminal below.
 - A sun and moon button in the top bar switches between the light and dark themes. With the theme
@@ -192,17 +226,8 @@ Look and feel
 - Ticked checkboxes show a tick, including disabled ones, which looked unticked before.
 - A status bar message that arrived while the window was hidden is no longer drawn over the
   connection state.
-- The file browser: a selected folder no longer has a block of accent colour beside it, its folder
-  trees use the same arrows as the session list, and an empty transfer list says what would be in it.
-- A lighter, cleaner file browser: the two sides and the transfer queue are cards, each side headed
-  by what it is ("This computer" or the session's name), the path and filter fields carry icons in
-  place of labels, columns have short names (Name, Size, Type, Modified), the queue's tabs sit on
-  top, and Upload and Download are a quieter pair. It opens with the focus in the local files.
 - With several panes, only the active one's tab is marked in the accent colour, so it is clear
   which pane typing and the send bar go to.
-- The file browser's folder trees are taller and less indented, and keep the current folder in
-  view while the folders around it are still being listed. Sizes are headed on the right, over the
-  numbers, and the sort arrow sits above its heading, as in Explorer.
 - A cleaner session dialog, start page and file browser.
 - The product name is shown as Tech X Terminal everywhere.
 
